@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'screens/billing_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/reports_screen.dart';
-import 'test_db.dart';
 
 void main() {
   runApp(const BillingApp());
@@ -17,7 +16,7 @@ class BillingApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'D Brownie Billing',
       theme: ThemeData(primarySwatch: Colors.brown),
-      home: const TestDBScreen(),
+      home: const HomePage(),
     );
   }
 }

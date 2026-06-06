@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/app_data.dart';
+import '../data/database_helper.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -9,6 +10,37 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
+  @override
+  void initState() {
+    super.initState();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    final categories = await DatabaseHelper.instance.getCategories();
+
+    final items = await DatabaseHelper.instance.getMenuItems();
+
+    bool hasUncategorized = categories.any(
+      (c) => c["name"] == AppData.uncategorized,
+    );
+
+    if (!hasUncategorized) {
+      await DatabaseHelper.instance.insertCategory(AppData.uncategorized);
+      categories.add({"name": AppData.uncategorized});
+    }
+
+    AppData.categories = categories.map((e) => e["name"] as String).toList();
+
+    AppData.categories.remove(AppData.uncategorized);
+
+    AppData.categories.add(AppData.uncategorized);
+
+    AppData.menuItems = items;
+
+    if (mounted) setState(() {});
+  }
+
   final TextEditingController categoryController = TextEditingController();
 
   final TextEditingController itemController = TextEditingController();
@@ -23,7 +55,7 @@ class _MenuScreenState extends State<MenuScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void addCategory() {
+  Future<void> addCategory() async {
     String category = categoryController.text.trim();
 
     if (category.isEmpty) return;
@@ -37,15 +69,13 @@ class _MenuScreenState extends State<MenuScreen> {
       return;
     }
 
-    setState(() {
-      AppData.categories.add(category);
-    });
-
+    await DatabaseHelper.instance.insertCategory(category);
+    await loadData();
     categoryController.clear();
   }
 
   void editCategory(String oldCategory) {
-    if (oldCategory == "Uncategorized") {
+    if (oldCategory == AppData.uncategorized) {
       showMessage("Cannot edit Uncategorized");
       return;
     }
@@ -67,7 +97,7 @@ class _MenuScreenState extends State<MenuScreen> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 String newCategory = controller.text.trim();
 
                 if (newCategory.isEmpty) {
@@ -85,17 +115,23 @@ class _MenuScreenState extends State<MenuScreen> {
                   return;
                 }
 
-                setState(() {
-                  int index = AppData.categories.indexOf(oldCategory);
+                await DatabaseHelper.instance.updateCategory(
+                  oldCategory,
+                  newCategory,
+                );
 
-                  AppData.categories[index] = newCategory;
-
-                  for (var item in AppData.menuItems) {
-                    if (item["category"] == oldCategory) {
-                      item["category"] = newCategory;
-                    }
+                for (var item in AppData.menuItems) {
+                  if (item["category"] == oldCategory) {
+                    await DatabaseHelper.instance.updateMenuItem(
+                      oldName: item["name"],
+                      name: item["name"],
+                      price: item["price"],
+                      category: newCategory,
+                    );
                   }
-                });
+                }
+
+                await loadData();
 
                 Navigator.pop(context);
               },
@@ -108,7 +144,7 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   void deleteCategory(String category) {
-    if (category == "Uncategorized") {
+    if (category == AppData.uncategorized) {
       showMessage("Cannot delete Uncategorized");
       return;
     }
@@ -127,20 +163,21 @@ class _MenuScreenState extends State<MenuScreen> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  for (var item in AppData.menuItems) {
-                    if (item["category"] == category) {
-                      item["category"] = "Uncategorized";
-                    }
+              onPressed: () async {
+                for (var item in AppData.menuItems) {
+                  if (item["category"] == category) {
+                    await DatabaseHelper.instance.updateMenuItem(
+                      oldName: item["name"],
+                      name: item["name"],
+                      price: item["price"],
+                      category: AppData.uncategorized,
+                    );
                   }
+                }
 
-                  AppData.categories.remove(category);
+                await DatabaseHelper.instance.deleteCategory(category);
 
-                  if (selectedCategory == category) {
-                    selectedCategory = null;
-                  }
-                });
+                await loadData();
 
                 Navigator.pop(context);
               },
@@ -152,7 +189,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  void addItem() {
+  Future<void> addItem() async {
     String name = itemController.text.trim();
 
     double? price = double.tryParse(priceController.text.trim());
@@ -177,13 +214,13 @@ class _MenuScreenState extends State<MenuScreen> {
       return;
     }
 
-    setState(() {
-      AppData.menuItems.add({
-        "name": name,
-        "price": price,
-        "category": selectedCategory,
-      });
-    });
+    await DatabaseHelper.instance.insertMenuItem(
+      name: name,
+      price: price,
+      category: selectedCategory!,
+    );
+
+    await loadData();
 
     itemController.clear();
     priceController.clear();
@@ -244,7 +281,7 @@ class _MenuScreenState extends State<MenuScreen> {
                   child: const Text("Cancel"),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     String newName = nameController.text.trim();
 
                     double? newPrice = double.tryParse(
@@ -269,13 +306,21 @@ class _MenuScreenState extends State<MenuScreen> {
                       return;
                     }
 
-                    setState(() {
-                      AppData.menuItems[index] = {
+                    await DatabaseHelper.instance.updateMenuItem(
+                      oldName: item["name"],
+                      name: newName,
+                      price: newPrice,
+                      category: category,
+                    );
+
+                    await loadData();
+
+                    /*
                         "name": newName,
                         "price": newPrice,
                         "category": category,
                       };
-                    });
+                    });*/
 
                     Navigator.pop(context);
                   },
@@ -289,7 +334,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  void deleteItem(int index) {
+  Future<void> deleteItem(int index) async {
     showDialog(
       context: context,
       builder: (_) {
@@ -302,12 +347,14 @@ class _MenuScreenState extends State<MenuScreen> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  AppData.menuItems.removeAt(index);
-                });
+              onPressed: () async {
+                await DatabaseHelper.instance.deleteMenuItem(
+                  AppData.menuItems[index]["name"],
+                );
 
                 Navigator.pop(context);
+
+                await loadData();
               },
               child: const Text("Delete"),
             ),
@@ -354,7 +401,7 @@ class _MenuScreenState extends State<MenuScreen> {
             const SizedBox(height: 15),
 
             ...AppData.categories
-                .where((category) => category != "Uncategorized")
+                .where((category) => category != AppData.uncategorized)
                 .map(
                   (category) => Card(
                     child: ListTile(
@@ -413,7 +460,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 labelText: "Category",
               ),
               items: AppData.categories
-                  .where((category) => category != "Uncategorized")
+                  .where((category) => category != AppData.uncategorized)
                   .map(
                     (category) => DropdownMenuItem(
                       value: category,
@@ -440,12 +487,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
             const SizedBox(height: 20),
 
-            ...[
-              ...AppData.categories.where(
-                (category) => category != "Uncategorized",
-              ),
-              "Uncategorized",
-            ].map((category) {
+            ...AppData.categories.map((category) {
               final items = AppData.menuItems
                   .where((item) => item["category"] == category)
                   .toList();
@@ -475,11 +517,23 @@ class _MenuScreenState extends State<MenuScreen> {
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => editItem(index),
+                              onPressed: () => editItem(
+                                AppData.menuItems.indexWhere(
+                                  (menuItem) =>
+                                      menuItem["name"] == item["name"] &&
+                                      menuItem["category"] == item["category"],
+                                ),
+                              ),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => deleteItem(index),
+                              onPressed: () => deleteItem(
+                                AppData.menuItems.indexWhere(
+                                  (menuItem) =>
+                                      menuItem["name"] == item["name"] &&
+                                      menuItem["category"] == item["category"],
+                                ),
+                              ),
                             ),
                           ],
                         ),
