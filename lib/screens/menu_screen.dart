@@ -506,8 +506,6 @@ class _MenuScreenState extends State<MenuScreen> {
                   const SizedBox(height: 8),
 
                   ...items.map((item) {
-                    final index = AppData.menuItems.indexOf(item);
-
                     return Card(
                       child: ListTile(
                         title: Text(item["name"]),

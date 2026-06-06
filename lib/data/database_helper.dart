@@ -355,6 +355,306 @@ class DatabaseHelper {
   ''');
   }
 
+  Future<double> getRevenue(String period) async {
+    final db = await database;
+
+    String whereClause = "status = 'Served'";
+
+    if (period == "today") {
+      whereClause += " AND date(created_at) = date('now','localtime')";
+    } else if (period == "week") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-7 days','localtime')";
+    } else if (period == "month") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-30 days','localtime')";
+    }
+
+    final result = await db.rawQuery('''
+    SELECT SUM(total_amount) as revenue
+    FROM orders
+    WHERE $whereClause
+  ''');
+
+    return (result.first["revenue"] as num?)?.toDouble() ?? 0;
+  }
+
+  Future<int> getOrdersCount(String period) async {
+    final db = await database;
+
+    String whereClause = "status = 'Served'";
+
+    if (period == "today") {
+      whereClause += " AND date(created_at) = date('now','localtime')";
+    } else if (period == "week") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-7 days','localtime')";
+    } else if (period == "month") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-30 days','localtime')";
+    }
+
+    final result = await db.rawQuery('''
+    SELECT COUNT(*) as count
+    FROM orders
+    WHERE $whereClause
+  ''');
+
+    return result.first["count"] as int;
+  }
+
+  Future<int> getCancelledCount(String period) async {
+    final db = await database;
+
+    String whereClause = "status = 'Cancelled'";
+
+    if (period == "today") {
+      whereClause += " AND date(created_at) = date('now','localtime')";
+    } else if (period == "week") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-7 days','localtime')";
+    } else if (period == "month") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-30 days','localtime')";
+    }
+
+    final result = await db.rawQuery('''
+    SELECT COUNT(*) as count
+    FROM orders
+    WHERE $whereClause
+  ''');
+
+    return result.first["count"] as int;
+  }
+
+  Future<double> getAverageOrder(String period) async {
+    final db = await database;
+
+    String whereClause = "status = 'Served'";
+
+    if (period == "today") {
+      whereClause += " AND date(created_at) = date('now','localtime')";
+    } else if (period == "week") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-7 days','localtime')";
+    } else if (period == "month") {
+      whereClause +=
+          " AND date(created_at) >= date('now','-30 days','localtime')";
+    }
+
+    final result = await db.rawQuery('''
+    SELECT AVG(total_amount) as average
+    FROM orders
+    WHERE $whereClause
+  ''');
+
+    return (result.first["average"] as num?)?.toDouble() ?? 0;
+  }
+
+  Future<Map<String, dynamic>?> getPeakDay() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      strftime('%w', created_at) as day_number,
+      SUM(total_amount) as revenue
+    FROM orders
+    WHERE status = 'Served'
+    GROUP BY day_number
+    ORDER BY revenue DESC
+    LIMIT 1
+  ''');
+
+    if (result.isEmpty) return null;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    final row = result.first;
+
+    return {
+      "day": days[int.parse(row["day_number"].toString())],
+      "revenue": row["revenue"],
+    };
+  }
+
+  Future<Map<String, dynamic>?> getSlowestDay() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      strftime('%w', created_at) as day_number,
+      SUM(total_amount) as revenue
+    FROM orders
+    WHERE status = 'Served'
+    GROUP BY day_number
+    ORDER BY revenue ASC
+    LIMIT 1
+  ''');
+
+    if (result.isEmpty) return null;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    final row = result.first;
+
+    return {
+      "day": days[int.parse(row["day_number"].toString())],
+      "revenue": row["revenue"],
+    };
+  }
+
+  Future<Map<String, dynamic>?> getPeakHour() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      strftime('%H', created_at) as hour,
+      COUNT(*) as orders_count
+    FROM orders
+    WHERE status = 'Served'
+    GROUP BY hour
+    ORDER BY orders_count DESC
+    LIMIT 1
+  ''');
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    final row = result.first;
+
+    final hour = int.parse(row["hour"].toString());
+
+    String formatHour(int h) {
+      if (h == 0) return "12 AM";
+      if (h < 12) return "$h AM";
+      if (h == 12) return "12 PM";
+      return "${h - 12} PM";
+    }
+
+    return {
+      "hour": "${formatHour(hour)} - ${formatHour((hour + 1) % 24)}",
+      "orders": row["orders_count"],
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> getWeekdayDemandPattern() async {
+    final db = await database;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
+    List<Map<String, dynamic>> result = [];
+
+    for (int i = 0; i < 7; i++) {
+      final query = await db.rawQuery('''
+      SELECT
+        oi.item_name,
+        SUM(oi.quantity) as total_sold
+      FROM order_items oi
+      JOIN orders o
+        ON oi.order_id = o.id
+      WHERE o.status = 'Served'
+        AND strftime('%w', o.created_at) = '$i'
+      GROUP BY oi.item_name
+      ORDER BY total_sold DESC
+      LIMIT 1
+    ''');
+
+      if (query.isNotEmpty) {
+        result.add({
+          "day": days[i],
+          "item_name": query.first["item_name"],
+          "total_sold": query.first["total_sold"],
+        });
+      }
+    }
+
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> getCategoryLeaders() async {
+    final db = await database;
+
+    final categories = await db.query('categories');
+
+    List<Map<String, dynamic>> leaders = [];
+
+    for (var category in categories) {
+      final categoryName = category["name"] as String;
+
+      if (categoryName == "Uncategorized") {
+        continue;
+      }
+
+      final result = await db.rawQuery(
+        '''
+      SELECT
+        oi.item_name,
+        SUM(oi.quantity) as total_sold
+      FROM order_items oi
+      JOIN orders o
+        ON oi.order_id = o.id
+      JOIN menu_items mi
+        ON mi.name = oi.item_name
+      WHERE o.status = 'Served'
+        AND mi.category = ?
+      GROUP BY oi.item_name
+      ORDER BY total_sold DESC
+      LIMIT 1
+    ''',
+        [categoryName],
+      );
+
+      if (result.isNotEmpty) {
+        leaders.add({
+          "category": categoryName,
+          "item_name": result.first["item_name"],
+          "total_sold": result.first["total_sold"],
+        });
+      }
+    }
+
+    return leaders;
+  }
+
+  Future<List<Map<String, dynamic>>> getWorstSellingItems() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT
+      item_name,
+      SUM(quantity) as total_sold
+    FROM order_items
+    GROUP BY item_name
+    ORDER BY total_sold ASC
+    LIMIT 5
+  ''');
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();
