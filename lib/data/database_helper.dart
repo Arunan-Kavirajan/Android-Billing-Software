@@ -231,6 +231,130 @@ class DatabaseHelper {
     );
   }
 
+  Future<Map<String, dynamic>?> getOrder(int orderId) async {
+    final db = await database;
+
+    final result = await db.query(
+      'orders',
+      where: 'id = ?',
+      whereArgs: [orderId],
+      limit: 1,
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return result.first;
+  }
+
+  Future<int> deleteOrderItems(int orderId) async {
+    final db = await database;
+
+    return db.delete(
+      'order_items',
+      where: 'order_id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<int> updateOrder({
+    required int orderId,
+    required String customerName,
+    required double totalAmount,
+  }) async {
+    final db = await database;
+
+    return db.update(
+      'orders',
+      {'customer_name': customerName, 'total_amount': totalAmount},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<double> getTotalRevenue() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT SUM(total_amount) as revenue
+    FROM orders
+    WHERE status = 'Served'
+  ''');
+
+    return (result.first["revenue"] as num?)?.toDouble() ?? 0;
+  }
+
+  Future<int> getTotalOrders() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT COUNT(*) as count
+    FROM orders
+    WHERE status = 'Served'
+  ''');
+
+    return result.first["count"] as int;
+  }
+
+  Future<int> getCancelledOrders() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT COUNT(*) as count
+    FROM orders
+    WHERE status = 'Cancelled'
+  ''');
+
+    return result.first["count"] as int;
+  }
+
+  Future<double> getAverageOrderValue() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT AVG(total_amount) as average
+    FROM orders
+    WHERE status = 'Served'
+  ''');
+
+    return (result.first["average"] as num?)?.toDouble() ?? 0;
+  }
+
+  Future<Map<String, dynamic>?> getBestSellingItem() async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT
+      item_name,
+      SUM(quantity) as total_sold
+    FROM order_items
+    GROUP BY item_name
+    ORDER BY total_sold DESC
+    LIMIT 1
+  ''');
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return result.first;
+  }
+
+  Future<List<Map<String, dynamic>>> getTopItems() async {
+    final db = await database;
+
+    return await db.rawQuery('''
+    SELECT
+      item_name,
+      SUM(quantity) as total_sold
+    FROM order_items
+    GROUP BY item_name
+    ORDER BY total_sold DESC
+    LIMIT 5
+  ''');
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();

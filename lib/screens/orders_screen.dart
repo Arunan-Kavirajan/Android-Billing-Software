@@ -150,12 +150,18 @@ class _OrdersScreenState extends State<OrdersScreen>
                           children: [
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Edit Order coming next"),
+                                onPressed: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          BillingScreen(orderId: order["id"]),
                                     ),
                                   );
+
+                                  if (mounted) {
+                                    setState(() {});
+                                  }
                                 },
                                 child: const Text("Edit"),
                               ),

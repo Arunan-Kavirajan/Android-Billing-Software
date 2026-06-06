@@ -3,16 +3,27 @@ import '../data/app_data.dart';
 import '../data/database_helper.dart';
 
 class BillingScreen extends StatefulWidget {
-  const BillingScreen({super.key});
+  final int? orderId;
+
+  const BillingScreen({super.key, this.orderId});
 
   @override
   State<BillingScreen> createState() => _BillingScreenState();
 }
 
 class _BillingScreenState extends State<BillingScreen> {
+  @override
+  void initState() {
+    super.initState();
+
+    loadOrder();
+  }
+
   final TextEditingController customerController = TextEditingController();
 
   List<Map<String, dynamic>> orderItems = [];
+
+  bool get isEditMode => widget.orderId != null;
 
   double get total {
     double sum = 0;
@@ -142,6 +153,31 @@ class _BillingScreenState extends State<BillingScreen> {
       return;
     }
 
+    if (isEditMode) {
+      await DatabaseHelper.instance.updateOrder(
+        orderId: widget.orderId!,
+        customerName: customerController.text.trim(),
+        totalAmount: total,
+      );
+
+      await DatabaseHelper.instance.deleteOrderItems(widget.orderId!);
+
+      for (var item in orderItems) {
+        await DatabaseHelper.instance.addOrderItem(
+          orderId: widget.orderId!,
+          itemName: item["name"],
+          price: item["price"],
+          quantity: item["quantity"],
+        );
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      return;
+    }
+
     final orderId = await DatabaseHelper.instance.createOrder(
       customerName: customerController.text.trim(),
       totalAmount: total,
@@ -168,6 +204,36 @@ class _BillingScreenState extends State<BillingScreen> {
     });
 
     Navigator.pop(context);
+  }
+
+  Future<void> loadOrder() async {
+    if (widget.orderId == null) {
+      return;
+    }
+
+    final order = await DatabaseHelper.instance.getOrder(widget.orderId!);
+
+    final items = await DatabaseHelper.instance.getOrderItems(widget.orderId!);
+
+    if (order == null) {
+      return;
+    }
+
+    customerController.text = order["customer_name"];
+
+    orderItems.clear();
+
+    for (var item in items) {
+      orderItems.add({
+        "name": item["item_name"],
+        "price": item["price"],
+        "quantity": item["quantity"],
+      });
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -282,8 +348,8 @@ class _BillingScreenState extends State<BillingScreen> {
               height: 50,
               child: ElevatedButton(
                 onPressed: saveBill,
-                child: const Text(
-                  "Place Order",
+                child: Text(
+                  isEditMode ? "Update Order" : "Place Order",
                   style: TextStyle(fontSize: 18),
                 ),
               ),
