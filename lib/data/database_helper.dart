@@ -20,10 +20,15 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
-  Future _createDB(Database db, int version) async {
+  Future<void> _createDB(Database db, int version) async {
     await db.execute('''
       CREATE TABLE categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +44,55 @@ class DatabaseHelper {
         category TEXT NOT NULL
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_name TEXT NOT NULL,
+        total_amount REAL NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE order_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        price REAL NOT NULL,
+        quantity INTEGER NOT NULL
+      )
+    ''');
   }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE orders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_name TEXT NOT NULL,
+          total_amount REAL NOT NULL,
+          status TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE order_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          price REAL NOT NULL,
+          quantity INTEGER NOT NULL
+        )
+      ''');
+    }
+  }
+
+  // =========================
+  // CATEGORY CRUD
+  // =========================
 
   Future<int> insertCategory(String name) async {
     final db = await database;
@@ -67,6 +120,10 @@ class DatabaseHelper {
 
     return db.delete('categories', where: 'name = ?', whereArgs: [name]);
   }
+
+  // =========================
+  // MENU ITEM CRUD
+  // =========================
 
   Future<int> insertMenuItem({
     required String name,
@@ -107,6 +164,71 @@ class DatabaseHelper {
     final db = await database;
 
     return db.delete('menu_items', where: 'name = ?', whereArgs: [name]);
+  }
+
+  // =========================
+  // ORDERS
+  // =========================
+
+  Future<int> createOrder({
+    required String customerName,
+    required double totalAmount,
+  }) async {
+    final db = await database;
+
+    return db.insert('orders', {
+      'customer_name': customerName,
+      'total_amount': totalAmount,
+      'status': 'Pending',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<int> addOrderItem({
+    required int orderId,
+    required String itemName,
+    required double price,
+    required int quantity,
+  }) async {
+    final db = await database;
+
+    return db.insert('order_items', {
+      'order_id': orderId,
+      'item_name': itemName,
+      'price': price,
+      'quantity': quantity,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getOrdersByStatus(String status) async {
+    final db = await database;
+
+    return db.query(
+      'orders',
+      where: 'status = ?',
+      whereArgs: [status],
+      orderBy: 'id DESC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getOrderItems(int orderId) async {
+    final db = await database;
+
+    return db.query('order_items', where: 'order_id = ?', whereArgs: [orderId]);
+  }
+
+  Future<int> updateOrderStatus({
+    required int orderId,
+    required String status,
+  }) async {
+    final db = await database;
+
+    return db.update(
+      'orders',
+      {'status': status},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
   }
 
   Future close() async {

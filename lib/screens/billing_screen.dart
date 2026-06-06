@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/app_data.dart';
+import '../data/database_helper.dart';
 
 class BillingScreen extends StatefulWidget {
   const BillingScreen({super.key});
@@ -126,7 +127,7 @@ class _BillingScreenState extends State<BillingScreen> {
     );
   }
 
-  void saveBill() {
+  Future<void> saveBill() async {
     if (customerController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter customer name")),
@@ -141,30 +142,32 @@ class _BillingScreenState extends State<BillingScreen> {
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Bill Saved"),
-          content: Text(
-            "Customer: ${customerController.text}\nTotal: ₹${total.toStringAsFixed(2)}",
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-
-                setState(() {
-                  customerController.clear();
-                  orderItems.clear();
-                });
-              },
-              child: const Text("OK"),
-            ),
-          ],
-        );
-      },
+    final orderId = await DatabaseHelper.instance.createOrder(
+      customerName: customerController.text.trim(),
+      totalAmount: total,
     );
+
+    for (var item in orderItems) {
+      await DatabaseHelper.instance.addOrderItem(
+        orderId: orderId,
+        itemName: item["name"],
+        price: item["price"],
+        quantity: item["quantity"],
+      );
+    }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Order Placed")));
+
+    setState(() {
+      customerController.clear();
+      orderItems.clear();
+    });
+
+    Navigator.pop(context);
   }
 
   @override
@@ -279,7 +282,10 @@ class _BillingScreenState extends State<BillingScreen> {
               height: 50,
               child: ElevatedButton(
                 onPressed: saveBill,
-                child: const Text("Save Bill", style: TextStyle(fontSize: 18)),
+                child: const Text(
+                  "Place Order",
+                  style: TextStyle(fontSize: 18),
+                ),
               ),
             ),
           ],

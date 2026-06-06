@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'screens/billing_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/reports_screen.dart';
+import 'screens/orders_screen.dart';
 
 void main() {
   runApp(const BillingApp());
@@ -32,7 +32,7 @@ class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
 
   final List<Widget> screens = const [
-    BillingScreen(),
+    OrdersScreen(),
     MenuScreen(),
     ReportsScreen(),
   ];
@@ -50,10 +50,7 @@ class _HomePageState extends State<HomePage> {
           });
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: "Billing",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: "Orders"),
           BottomNavigationBarItem(
             icon: Icon(Icons.restaurant_menu),
             label: "Menu",
