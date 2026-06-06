@@ -46,6 +46,76 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  Future<void> showResetDialog() async {
+    final stats = await DatabaseHelper.instance.getBusinessDataStats();
+
+    if (!mounted) return;
+
+    final firstConfirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Reset Business Data?"),
+        content: Text(
+          "Orders: ${stats["orders"]}\n\n"
+          "Revenue History: ₹${stats["revenue"]}\n\n"
+          "All orders and reports will be deleted.\n"
+          "Menu items and categories will be kept.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Continue"),
+          ),
+        ],
+      ),
+    );
+
+    if (firstConfirm != true) {
+      return;
+    }
+
+    if (!mounted) return;
+
+    final secondConfirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Final Warning"),
+        content: const Text(
+          "This action cannot be undone.\n\n"
+          "All order history and reports will be permanently deleted.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete Everything"),
+          ),
+        ],
+      ),
+    );
+
+    if (secondConfirm != true) {
+      return;
+    }
+
+    await DatabaseHelper.instance.clearBusinessData();
+
+    if (!mounted) return;
+
+    setState(() {});
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Business data cleared")));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -264,6 +334,33 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         trailing: Text("${item["total_sold"]} sold"),
                       );
                     }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                const Divider(),
+
+                const SizedBox(height: 20),
+
+                Text(
+                  "Danger Zone",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: showResetDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text("Reset Business Data"),
                   ),
                 ),
               ],

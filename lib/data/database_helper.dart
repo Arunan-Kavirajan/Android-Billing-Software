@@ -655,6 +655,34 @@ class DatabaseHelper {
   ''');
   }
 
+  Future<void> clearBusinessData() async {
+    final db = await database;
+
+    await db.delete('order_items');
+
+    await db.delete('orders');
+  }
+
+  Future<Map<String, dynamic>> getBusinessDataStats() async {
+    final db = await database;
+
+    final ordersResult = await db.rawQuery('''
+    SELECT COUNT(*) as count
+    FROM orders
+  ''');
+
+    final revenueResult = await db.rawQuery('''
+    SELECT SUM(total_amount) as revenue
+    FROM orders
+    WHERE status = 'Served'
+  ''');
+
+    return {
+      "orders": ordersResult.first["count"] ?? 0,
+      "revenue": revenueResult.first["revenue"] ?? 0,
+    };
+  }
+
   Future close() async {
     final db = await instance.database;
     db.close();

@@ -26,6 +26,26 @@ class _OrdersScreenState extends State<OrdersScreen>
     });
   }
 
+  String getOrderAge(String createdAt) {
+    final created = DateTime.parse(createdAt);
+
+    final diff = DateTime.now().difference(created);
+
+    if (diff.inMinutes < 1) {
+      return "Just now";
+    }
+
+    if (diff.inMinutes < 60) {
+      return "${diff.inMinutes} min ago";
+    }
+
+    if (diff.inHours < 24) {
+      return "${diff.inHours} hr ago";
+    }
+
+    return "${diff.inDays} day ago";
+  }
+
   @override
   void dispose() {
     tabController.dispose();
@@ -94,6 +114,64 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
+  Widget buildSummaryHeader() {
+    return FutureBuilder(
+      future: Future.wait([
+        DatabaseHelper.instance.getOrdersByStatus("Pending"),
+        DatabaseHelper.instance.getOrdersByStatus("Served"),
+        DatabaseHelper.instance.getOrdersByStatus("Cancelled"),
+      ]),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox();
+        }
+
+        final pending = (snapshot.data![0] as List).length;
+
+        final served = (snapshot.data![1] as List).length;
+
+        final cancelled = (snapshot.data![2] as List).length;
+
+        Widget statCard(String title, int value, Color color) {
+          return Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    Text(
+                      value.toString(),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(title),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              statCard("Pending", pending, const Color(0xFFC48A3A)),
+
+              statCard("Served", served, const Color(0xFF6B8E5A)),
+
+              statCard("Cancelled", cancelled, const Color(0xFFB85C5C)),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildOrdersList(String status) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: DatabaseHelper.instance.getOrdersByStatus(status),
@@ -106,9 +184,32 @@ class _OrdersScreenState extends State<OrdersScreen>
 
         if (orders.isEmpty) {
           return Center(
-            child: Text(
-              "No $status Orders",
-              style: const TextStyle(fontSize: 18, color: Colors.grey),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.receipt_long,
+                  size: 64,
+                  color: Color(0xFFA1887F),
+                ),
+
+                const SizedBox(height: 16),
+
+                Text(
+                  "No $status Orders",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                const Text(
+                  "New orders will appear here.",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ],
             ),
           );
         }
@@ -127,21 +228,68 @@ class _OrdersScreenState extends State<OrdersScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Order #${order["id"]}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: status == "Pending"
+                                  ? const Color(0xFFC48A3A)
+                                  : status == "Served"
+                                  ? const Color(0xFF6B8E5A)
+                                  : const Color(0xFFB85C5C),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              status,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 4),
+
                       Text(
-                        "#${order["id"]}",
+                        order["customer_name"],
+                        style: const TextStyle(fontSize: 16),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      Text(
+                        getOrderAge(order["created_at"]),
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          color: Colors.grey,
+                          fontSize: 13,
                         ),
                       ),
 
                       const SizedBox(height: 4),
 
-                      Text(order["customer_name"]),
-
-                      const SizedBox(height: 4),
-
-                      Text("₹${order["total_amount"]}"),
+                      Text(
+                        "₹${order["total_amount"]}",
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
 
                       const SizedBox(height: 10),
 
@@ -149,7 +297,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                         Row(
                           children: [
                             Expanded(
-                              child: ElevatedButton(
+                              child: OutlinedButton(
                                 onPressed: () async {
                                   await Navigator.push(
                                     context,
@@ -171,6 +319,9 @@ class _OrdersScreenState extends State<OrdersScreen>
 
                             Expanded(
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6B8E5A),
+                                ),
                                 onPressed: () async {
                                   await updateOrderStatus(
                                     order["id"],
@@ -185,6 +336,9 @@ class _OrdersScreenState extends State<OrdersScreen>
 
                             Expanded(
                               child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFB85C5C),
+                                ),
                                 onPressed: () async {
                                   await updateOrderStatus(
                                     order["id"],
@@ -213,6 +367,9 @@ class _OrdersScreenState extends State<OrdersScreen>
       appBar: AppBar(
         title: const Text("Orders"),
         bottom: TabBar(
+          labelColor: Colors.white, // selected tab text
+          unselectedLabelColor: Colors.white70, // unselected tabs
+          indicatorColor: Colors.white,
           controller: tabController,
           tabs: const [
             Tab(text: "Pending"),
@@ -221,15 +378,23 @@ class _OrdersScreenState extends State<OrdersScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: tabController,
+      body: Column(
         children: [
-          buildOrdersList("Pending"),
-          buildOrdersList("Served"),
-          buildOrdersList("Cancelled"),
+          buildSummaryHeader(),
+
+          Expanded(
+            child: TabBarView(
+              controller: tabController,
+              children: [
+                buildOrdersList("Pending"),
+                buildOrdersList("Served"),
+                buildOrdersList("Cancelled"),
+              ],
+            ),
+          ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.push(
             context,
@@ -240,7 +405,10 @@ class _OrdersScreenState extends State<OrdersScreen>
             setState(() {});
           }
         },
-        child: const Icon(Icons.add),
+        backgroundColor: const Color(0xFF6D4C41),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text("New Order"),
       ),
     );
   }

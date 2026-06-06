@@ -260,7 +260,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       items: AppData.categories
                           .map(
                             (c) => DropdownMenuItem(value: c, child: Text(c)),
@@ -454,7 +454,7 @@ class _MenuScreenState extends State<MenuScreen> {
             const SizedBox(height: 10),
 
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              initialValue: selectedCategory,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: "Category",
