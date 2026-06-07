@@ -10,51 +10,19 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   String selectedFilter = "today";
-  Widget buildCard(String title, String value) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget buildFilterChip(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selectedFilter == value,
-        onSelected: (_) {
-          setState(() {
-            selectedFilter = value;
-          });
-        },
-      ),
-    );
-  }
 
   Future<void> showResetDialog() async {
     final stats = await DatabaseHelper.instance.getBusinessDataStats();
-
     if (!mounted) return;
 
     final firstConfirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Reset Business Data?"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          "Reset Business Data?",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: Text(
           "Orders: ${stats["orders"]}\n\n"
           "Revenue History: ₹${stats["revenue"]}\n\n"
@@ -64,7 +32,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: Colors.brown.shade400),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -74,16 +45,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
 
-    if (firstConfirm != true) {
-      return;
-    }
-
+    if (firstConfirm != true) return;
     if (!mounted) return;
 
     final secondConfirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Final Warning"),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          "Final Warning",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+        ),
         content: const Text(
           "This action cannot be undone.\n\n"
           "All order history and reports will be permanently deleted.",
@@ -91,9 +63,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
+            child: Text("No", style: TextStyle(color: Colors.brown.shade400)),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("Delete Everything"),
           ),
@@ -101,16 +74,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
     );
 
-    if (secondConfirm != true) {
-      return;
-    }
+    if (secondConfirm != true) return;
 
     await DatabaseHelper.instance.clearBusinessData();
-
     if (!mounted) return;
 
     setState(() {});
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text("Business data cleared")));
@@ -119,7 +88,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Reports"), centerTitle: true),
+      backgroundColor: Colors.brown.shade50,
+      appBar: AppBar(
+        title: const Text(
+          "Reports",
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
+        centerTitle: true,
+      ),
       body: FutureBuilder(
         future: Future.wait([
           DatabaseHelper.instance.getRevenue(selectedFilter),
@@ -131,9 +107,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           DatabaseHelper.instance.getSlowestDay(),
           DatabaseHelper.instance.getPeakHour(),
           DatabaseHelper.instance.getWeekdayDemandPattern(),
-
           DatabaseHelper.instance.getCategoryLeaders(),
-
           DatabaseHelper.instance.getWorstSellingItems(),
         ]),
         builder: (context, snapshot) {
@@ -142,225 +116,280 @@ class _ReportsScreenState extends State<ReportsScreen> {
           }
 
           final revenue = snapshot.data![0] as double;
-
           final orders = snapshot.data![1] as int;
-
           final cancelled = snapshot.data![2] as int;
-
           final average = snapshot.data![3] as double;
-
           final topItems = snapshot.data![4] as List<Map<String, dynamic>>;
-
           final peakDay = snapshot.data![5] as Map<String, dynamic>?;
-
           final slowestDay = snapshot.data![6] as Map<String, dynamic>?;
-
           final peakHour = snapshot.data![7] as Map<String, dynamic>?;
-
           final weekdayDemand = snapshot.data![8] as List<Map<String, dynamic>>;
-
           final categoryLeaders =
               snapshot.data![9] as List<Map<String, dynamic>>;
-
           final worstItems = snapshot.data![10] as List<Map<String, dynamic>>;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── Filter chips ───────────────────────────────────────────
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      buildFilterChip("Today", "today"),
-                      buildFilterChip("Week", "week"),
-                      buildFilterChip("Month", "month"),
-                      buildFilterChip("All Time", "all"),
+                      _filterChip("Today", "today"),
+                      _filterChip("Week", "week"),
+                      _filterChip("Month", "month"),
+                      _filterChip("All Time", "all"),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 20),
-                const Text(
-                  "Business Health",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
 
+                // ── Business health ────────────────────────────────────────
+                _sectionTitle("Business Health"),
                 const SizedBox(height: 12),
 
                 GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisCount: 2,
-                  childAspectRatio: 1.4,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.5,
                   children: [
-                    buildCard("Revenue", "₹${revenue.toStringAsFixed(0)}"),
-                    buildCard("Orders", orders.toString()),
-                    buildCard("Average", "₹${average.toStringAsFixed(0)}"),
-                    buildCard("Cancelled", cancelled.toString()),
+                    _statCard(
+                      "Revenue",
+                      "₹${revenue.toStringAsFixed(0)}",
+                      Icons.currency_rupee_rounded,
+                      Colors.brown.shade700,
+                    ),
+                    _statCard(
+                      "Orders",
+                      orders.toString(),
+                      Icons.receipt_long_outlined,
+                      const Color(0xFF6B8E5A),
+                    ),
+                    _statCard(
+                      "Avg Order",
+                      "₹${average.toStringAsFixed(0)}",
+                      Icons.analytics_outlined,
+                      Colors.brown.shade500,
+                    ),
+                    _statCard(
+                      "Cancelled",
+                      cancelled.toString(),
+                      Icons.cancel_outlined,
+                      const Color(0xFFB85C5C),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Top 5 items ────────────────────────────────────────────
+                _sectionTitle("Top 5 Items"),
+                const SizedBox(height: 12),
+
+                _listCard(
+                  children: topItems.isEmpty
+                      ? [_emptyRow("No data yet")]
+                      : topItems.asMap().entries.map((e) {
+                          final rank = e.key + 1;
+                          final item = e.value;
+                          return _rankRow(
+                            rank: rank,
+                            label: item["item_name"],
+                            trailing: "${item["total_sold"]} sold",
+                          );
+                        }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Category leaders ───────────────────────────────────────
+                _sectionTitle("Category Leaders"),
+                const SizedBox(height: 12),
+
+                _listCard(
+                  children: categoryLeaders.isEmpty
+                      ? [_emptyRow("No data yet")]
+                      : categoryLeaders.map((leader) {
+                          return _iconRow(
+                            icon: Icons.star_rounded,
+                            iconColor: const Color(0xFFC48A3A),
+                            title: leader["item_name"],
+                            subtitle: leader["category"],
+                            trailing: "${leader["total_sold"]} sold",
+                          );
+                        }).toList(),
+                ),
+
+                const SizedBox(height: 20),
+
+                // ── Business patterns ──────────────────────────────────────
+                _sectionTitle("Business Patterns"),
+                const SizedBox(height: 12),
+
+                _listCard(
+                  children: [
+                    _iconRow(
+                      icon: Icons.emoji_events_rounded,
+                      iconColor: const Color(0xFFC48A3A),
+                      title: "Peak Day",
+                      subtitle: peakDay == null ? "No data" : peakDay["day"],
+                      trailing: peakDay == null
+                          ? ""
+                          : "₹${(peakDay["revenue"] as num).toStringAsFixed(0)}",
+                    ),
+                    _divider(),
+                    _iconRow(
+                      icon: Icons.trending_down_rounded,
+                      iconColor: const Color(0xFFB85C5C),
+                      title: "Slowest Day",
+                      subtitle: slowestDay == null
+                          ? "No data"
+                          : slowestDay["day"],
+                      trailing: slowestDay == null
+                          ? ""
+                          : "₹${(slowestDay["revenue"] as num).toStringAsFixed(0)}",
+                    ),
+                    _divider(),
+                    _iconRow(
+                      icon: Icons.access_time_rounded,
+                      iconColor: Colors.brown.shade600,
+                      title: "Peak Hour",
+                      subtitle: peakHour == null ? "No data" : peakHour["hour"],
+                      trailing: peakHour == null
+                          ? ""
+                          : "${peakHour["orders"]} orders",
+                    ),
                   ],
                 ),
 
                 const SizedBox(height: 20),
 
-                const Text(
-                  "Top 5 Items",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-
+                // ── Weekday demand pattern ─────────────────────────────────
+                _sectionTitle("Weekday Demand Pattern"),
                 const SizedBox(height: 12),
 
-                Card(
-                  child: Column(
-                    children: topItems.map((item) {
-                      return ListTile(
-                        title: Text(item["item_name"]),
-                        trailing: Text("${item["total_sold"]}"),
-                      );
-                    }).toList(),
-                  ),
+                _listCard(
+                  children: weekdayDemand.isEmpty
+                      ? [_emptyRow("No data yet")]
+                      : weekdayDemand.asMap().entries.map((e) {
+                          final i = e.key;
+                          final day = e.value;
+                          return Column(
+                            children: [
+                              if (i > 0) _divider(),
+                              _iconRow(
+                                icon: Icons.calendar_today_outlined,
+                                iconColor: Colors.brown.shade500,
+                                title: "${day["day"]}'s Favorite",
+                                subtitle: day["item_name"],
+                                trailing: "${day["total_sold"]} sold",
+                              ),
+                            ],
+                          );
+                        }).toList(),
                 ),
 
                 const SizedBox(height: 20),
 
-                const Text(
-                  "Category Leaders",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-
+                // ── Worst performers ───────────────────────────────────────
+                _sectionTitle("Worst Performers"),
                 const SizedBox(height: 12),
 
-                Card(
-                  child: Column(
-                    children: categoryLeaders.map((leader) {
-                      return ListTile(
-                        leading: const Icon(Icons.star),
-                        title: Text(leader["category"]),
-                        subtitle: Text(leader["item_name"]),
-                        trailing: Text("${leader["total_sold"]}"),
-                      );
-                    }).toList(),
-                  ),
+                _listCard(
+                  children: worstItems.isEmpty
+                      ? [_emptyRow("No data yet")]
+                      : worstItems.asMap().entries.map((e) {
+                          final i = e.key;
+                          final item = e.value;
+                          return Column(
+                            children: [
+                              if (i > 0) _divider(),
+                              _iconRow(
+                                icon: Icons.trending_down_rounded,
+                                iconColor: const Color(0xFFB85C5C),
+                                title: item["item_name"],
+                                subtitle: null,
+                                trailing: "${item["total_sold"]} sold",
+                              ),
+                            ],
+                          );
+                        }).toList(),
                 ),
 
-                const SizedBox(height: 20),
-
-                const Text(
-                  "Business Patterns",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 12),
-
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.emoji_events),
-                    title: const Text("Peak Day"),
-                    subtitle: Text(
-                      peakDay == null ? "No Data" : peakDay["day"],
-                    ),
-                    trailing: Text(
-                      peakDay == null
-                          ? ""
-                          : "₹${(peakDay["revenue"] as num).toStringAsFixed(0)}",
-                    ),
-                  ),
-                ),
-
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.trending_down),
-                    title: const Text("Slowest Day"),
-                    subtitle: Text(
-                      slowestDay == null ? "No Data" : slowestDay["day"],
-                    ),
-                    trailing: Text(
-                      slowestDay == null
-                          ? ""
-                          : "₹${(slowestDay["revenue"] as num).toStringAsFixed(0)}",
-                    ),
-                  ),
-                ),
-
-                Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.access_time),
-                    title: const Text("Peak Hour"),
-                    subtitle: Text(
-                      peakHour == null ? "No Data" : peakHour["hour"],
-                    ),
-                    trailing: Text(
-                      peakHour == null ? "" : "${peakHour["orders"]} orders",
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                const Text(
-                  "Weekday Demand Pattern",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 12),
-
-                Card(
-                  child: Column(
-                    children: weekdayDemand.map((day) {
-                      return ListTile(
-                        leading: const Icon(Icons.calendar_today),
-                        title: Text("${day["day"]}'s Favorite"),
-                        subtitle: Text(day["item_name"]),
-                        trailing: Text("${day["total_sold"]}"),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                const Text(
-                  "Worst Performers",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-
-                const SizedBox(height: 12),
-
-                Card(
-                  child: Column(
-                    children: worstItems.map((item) {
-                      return ListTile(
-                        leading: const Icon(Icons.trending_down),
-                        title: Text(item["item_name"]),
-                        trailing: Text("${item["total_sold"]} sold"),
-                      );
-                    }).toList(),
-                  ),
-                ),
                 const SizedBox(height: 30),
 
-                const Divider(),
+                // ── Danger zone ────────────────────────────────────────────
+                Divider(color: Colors.brown.shade200),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 20),
-
-                Text(
-                  "Danger Zone",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red.shade400,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Danger Zone",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade500,
+                      ),
+                    ),
+                  ],
                 ),
 
                 const SizedBox(height: 12),
 
-                SizedBox(
+                Container(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: showResetDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                    ),
-                    child: const Text("Reset Business Data"),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Reset all order history and revenue reports. Menu items and categories will not be affected.",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton.icon(
+                          onPressed: showResetDialog,
+                          icon: const Icon(Icons.delete_forever, size: 18),
+                          label: const Text(
+                            "Reset Business Data",
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade600,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -368,6 +397,216 @@ class _ReportsScreenState extends State<ReportsScreen> {
           );
         },
       ),
+    );
+  }
+
+  // ── Reusable UI helpers ──────────────────────────────────────────────────
+
+  Widget _filterChip(String label, String value) {
+    final selected = selectedFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => selectedFilter = value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? Colors.brown.shade700 : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? Colors.brown.shade700 : Colors.brown.shade200,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.brown.shade600,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.brown.shade800,
+      ),
+    );
+  }
+
+  Widget _statCard(String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.brown.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(fontSize: 12, color: Colors.brown.shade400),
+              ),
+              Icon(icon, size: 18, color: color.withOpacity(0.7)),
+            ],
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _listCard({required List<Widget> children}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.brown.shade100),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _rankRow({
+    required int rank,
+    required String label,
+    required String trailing,
+  }) {
+    final isTop = rank == 1;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: isTop ? const Color(0xFFC48A3A) : Colors.brown.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                "$rank",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isTop ? Colors.white : Colors.brown.shade600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Text(
+            trailing,
+            style: TextStyle(fontSize: 13, color: Colors.brown.shade500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _iconRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String? subtitle,
+    required String trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (subtitle != null && subtitle.isNotEmpty)
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.brown.shade400,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (trailing.isNotEmpty)
+            Text(
+              trailing,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.brown.shade600,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyRow(String message) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Center(
+        child: Text(
+          message,
+          style: TextStyle(color: Colors.brown.shade300, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return Divider(
+      height: 1,
+      indent: 16,
+      endIndent: 16,
+      color: Colors.brown.shade100,
     );
   }
 }

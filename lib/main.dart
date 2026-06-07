@@ -2,8 +2,35 @@ import 'package:flutter/material.dart';
 import 'screens/menu_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/orders_screen.dart';
+import 'data/app_data.dart';
+import 'data/database_helper.dart';
 
-void main() {
+Future<void> preloadMenuData() async {
+  final categories = await DatabaseHelper.instance.getCategories();
+  final items = await DatabaseHelper.instance.getMenuItems();
+
+  bool hasUncategorized = categories.any(
+    (c) => c["name"] == AppData.uncategorized,
+  );
+
+  if (!hasUncategorized) {
+    await DatabaseHelper.instance.insertCategory(AppData.uncategorized);
+    categories.add({"name": AppData.uncategorized});
+  }
+
+  AppData.categories = categories.map((e) => e["name"] as String).toList();
+
+  AppData.categories.remove(AppData.uncategorized);
+  AppData.categories.add(AppData.uncategorized);
+
+  AppData.menuItems = items;
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await preloadMenuData();
+
   runApp(const BillingApp());
 }
 
