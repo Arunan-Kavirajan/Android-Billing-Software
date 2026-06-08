@@ -18,7 +18,15 @@ class _BillingScreenState extends State<BillingScreen> {
     loadOrder();
   }
 
+  @override
+  void dispose() {
+    customerController.dispose();
+    _customerFocusNode.dispose();
+    super.dispose();
+  }
+
   final TextEditingController customerController = TextEditingController();
+  final FocusNode _customerFocusNode = FocusNode();
 
   List<Map<String, dynamic>> orderItems = [];
 
@@ -94,6 +102,9 @@ class _BillingScreenState extends State<BillingScreen> {
   // ── Persistent bottom-sheet with internal category → items navigation ──────
 
   void showAddItemSheet() {
+    // Dismiss keyboard and release focus before opening sheet
+    FocusScope.of(context).unfocus();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -112,7 +123,12 @@ class _BillingScreenState extends State<BillingScreen> {
           getQuantity: getItemQuantity,
         );
       },
-    );
+    ).then((_) {
+      // Delay slightly so Flutter finishes closing the sheet before unfocusing
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) FocusScope.of(context).unfocus();
+      });
+    });
   }
 
   // ── Save / load ─────────────────────────────────────────────────────────────
@@ -221,6 +237,7 @@ class _BillingScreenState extends State<BillingScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
+      resizeToAvoidBottomInset: true,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -238,6 +255,8 @@ class _BillingScreenState extends State<BillingScreen> {
             const SizedBox(height: 6),
             TextField(
               controller: customerController,
+              focusNode: _customerFocusNode,
+              autofocus: false,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -405,10 +424,16 @@ class _BillingScreenState extends State<BillingScreen> {
                       },
                     ),
             ),
-
-            const SizedBox(height: 12),
-
-            // ── Total ─────────────────────────────────────────────────────
+          ],
+        ),
+      ),
+      // ── Total + Place Order pinned at bottom, rises with keyboard ─────────
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Total ───────────────────────────────────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -441,7 +466,7 @@ class _BillingScreenState extends State<BillingScreen> {
 
             const SizedBox(height: 12),
 
-            // ── Place / Update Order ───────────────────────────────────────
+            // ── Place / Update Order ─────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               height: 50,
