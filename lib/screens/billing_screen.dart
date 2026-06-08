@@ -213,7 +213,7 @@ class _BillingScreenState extends State<BillingScreen> {
       backgroundColor: Colors.brown.shade50,
       appBar: AppBar(
         title: const Text(
-          "D Brownie Billing",
+          "Billing",
           style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
         centerTitle: true,

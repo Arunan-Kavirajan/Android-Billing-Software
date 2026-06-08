@@ -43,3 +43,56 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# Flutter build output
+build/
+
+# Dart tool cache
+.dart_tool/
+
+# Flutter plugin cache
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Gradle cache
+android/.gradle/
+
+# Android signing keys (keep these off GitHub always)
+*.jks
+*.keystore
+key.properties
+
+# iOS generated files
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Flutter/ephemeral/
+macos/Flutter/Flutter-Generated.xcconfig
+macos/Flutter/ephemeral/flutter_export_environment.sh
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Flutter metadata
+.metadata
+
+# Android local config (auto-generated, contains your local SDK path)
+android/local.properties
+
+# Auto-generated plugin registrant
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
+# Vim swap files
+*.swp
+*.swo
