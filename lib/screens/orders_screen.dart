@@ -1,6 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_bluetooth_printer/flutter_bluetooth_printer.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/database_helper.dart';
 import 'billing_screen.dart';
@@ -472,11 +471,133 @@ class _OrdersScreenState extends State<OrdersScreen>
     await prefs.remove(_printerKey);
   }
 
-  /// Entry point for printing — fetches items then selects printer
+  /// Entry point — fetches items then handles printer selection + printing
   Future<void> _triggerPrint(Map<String, dynamic> order) async {
     final items = await DatabaseHelper.instance.getOrderItems(order["id"]);
     if (!mounted) return;
     await _selectPrinterAndPrint(order, items);
+  }
+
+  /// Shows paired device picker as a bottom sheet, returns selected address or null
+  Future<String?> _showPrinterPicker() async {
+    final List<BluetoothInfo> paired =
+        await PrintBluetoothThermal.pairedBluetooths;
+
+    if (!mounted) return null;
+
+    if (paired.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "No paired printers found. Please pair your printer in Bluetooth settings first.",
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return null;
+    }
+
+    return await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.55,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 4),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.brown.shade200,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.print_outlined,
+                      color: Colors.brown.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Select Printer",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(color: Colors.brown.shade100, height: 1),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: paired.length,
+                  separatorBuilder: (_, __) =>
+                      Divider(height: 1, color: Colors.brown.shade50),
+                  itemBuilder: (ctx, i) {
+                    final device = paired[i];
+                    return ListTile(
+                      leading: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.brown.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.bluetooth,
+                          color: Colors.brown.shade600,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(
+                        device.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: Text(
+                        device.macAdress,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.brown.shade400,
+                        ),
+                      ),
+                      onTap: () => Navigator.pop(ctx, device.macAdress),
+                    );
+                  },
+                ),
+              ), // Flexible
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _selectPrinterAndPrint(
@@ -485,11 +606,10 @@ class _OrdersScreenState extends State<OrdersScreen>
   ) async {
     String? address = await _getSavedPrinterAddress();
 
+    // No saved printer — show picker
     if (address == null) {
-      final device = await FlutterBluetoothPrinter.selectDevice(context);
-      if (device == null)
-        return; // user dismissed — do nothing, order untouched
-      address = device.address;
+      address = await _showPrinterPicker();
+      if (address == null) return; // user dismissed
       await _savePrinterAddress(address);
     }
 
@@ -501,41 +621,96 @@ class _OrdersScreenState extends State<OrdersScreen>
     Map<String, dynamic> order,
     List<Map<String, dynamic>> items,
   ) async {
-    try {
-      final receipt = _buildReceipt(order, items);
-      await FlutterBluetoothPrinter.printBytes(
-        address: address,
-        data: Uint8List.fromList(receipt),
-        keepConnected: false,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Receipt printed successfully"),
-            action: SnackBarAction(
-              label: "Change Printer",
-              onPressed: () async {
-                await _clearSavedPrinter();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        "Printer cleared. Next print will ask again.",
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
+    // Show loading indicator
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text("Connecting to printer..."),
+            ],
           ),
-        );
+          duration: Duration(seconds: 30),
+        ),
+      );
+    }
+
+    try {
+      // Attempt connection — returns true/false, no silent failures
+      final bool connected = await PrintBluetoothThermal.connect(
+        macPrinterAddress: address,
+      );
+
+      if (!connected) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Could not connect to printer. Make sure it's on and nearby.",
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          // Clear saved address and show picker to retry or pick another
+          await _clearSavedPrinter();
+          await Future.delayed(const Duration(seconds: 2));
+          if (!mounted) return;
+          final newAddress = await _showPrinterPicker();
+          if (newAddress == null) return;
+          await _savePrinterAddress(newAddress);
+          await _printToAddress(newAddress, order, items);
+        }
+        return;
+      }
+
+      // Connected — verify once more then send bytes
+      final bool isConnected = await PrintBluetoothThermal.connectionStatus;
+      if (!isConnected) {
+        throw Exception("Connection dropped before printing.");
+      }
+
+      final receipt = _buildReceipt(order, items);
+      final bool printed = await PrintBluetoothThermal.writeBytes(receipt);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        if (printed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Receipt printed successfully"),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          throw Exception("Printer did not confirm print.");
+        }
       }
     } catch (e) {
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await _clearSavedPrinter();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Print failed. Please try again: $e")),
+          SnackBar(
+            content: Text("Print failed. Please try again."),
+            duration: const Duration(seconds: 2),
+          ),
         );
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        final newAddress = await _showPrinterPicker();
+        if (newAddress == null) return;
+        await _savePrinterAddress(newAddress);
+        await _printToAddress(newAddress, order, items);
       }
     }
   }

@@ -14,8 +14,8 @@ dependencies:
   sqflite: ^2.4.3
   path: ^1.9.1
   flutter_launcher_icons: ^0.14.4
-  flutter_bluetooth_printer: ^2.24.0
-  shared_preferences: ^2.5.5
+  shared_preferences: ^2.3.2
+  print_bluetooth_thermal: ^1.0.8
 
 dev_dependencies:
   flutter_test:

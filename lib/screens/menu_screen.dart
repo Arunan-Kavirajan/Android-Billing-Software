@@ -317,9 +317,15 @@ class _MenuScreenState extends State<MenuScreen>
                       return;
                     }
 
+                    // Exclude the item being edited by its original name+category,
+                    // not by reference — map references differ after DB reload.
+                    final originalName = item["name"] as String;
+                    final originalCategory = item["category"] as String;
+
                     bool exists = AppData.menuItems.any(
                       (menuItem) =>
-                          menuItem != item &&
+                          !(menuItem["name"] == originalName &&
+                              menuItem["category"] == originalCategory) &&
                           menuItem["category"] == category &&
                           menuItem["name"].toLowerCase() ==
                               newName.toLowerCase(),
