@@ -715,6 +715,25 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
   }
 
+  // 15 closing lines — one picked at random each receipt
+  static const _closingLines = [
+    "Hope this little treat brings a little extra joy to your day.",
+    "Whatever today has been like, you made it this far. Enjoy the dessert.",
+    "You deserve moments like this.",
+    "Take a pause, enjoy the sweetness, and be kind to yourself.",
+    "Thanks for letting us be a small part of your day.",
+    "Here's to good company, good conversations, and good desserts.",
+    "Hope you find a reason to smile before the last bite.",
+    "Life moves fast. Desserts are a good excuse to slow down.",
+    "Wishing you a day that's a little sweeter than before.",
+    "Some days call for a treat. Some days deserve one.",
+    "You looked at the menu and chose happiness.",
+    "Good news: dessert was the right answer.",
+    "This receipt is proof that at least one good decision was made today.",
+    "This receipt is evidence of excellent taste.",
+    "If anyone asks, this was absolutely necessary.",
+  ];
+
   List<int> _buildReceipt(
     Map<String, dynamic> order,
     List<Map<String, dynamic>> items,
@@ -722,23 +741,72 @@ class _OrdersScreenState extends State<OrdersScreen>
     List<int> bytes = [];
     const esc = 0x1B;
     const gs = 0x1D;
+    const int width = 32; // characters per line on 58mm
 
     void cmd(List<int> b) => bytes.addAll(b);
     void text(String s) => bytes.addAll(s.codeUnits);
     void nl([int n = 1]) => bytes.addAll(List.filled(n, 0x0A));
 
-    cmd([esc, 0x40]);
-    cmd([esc, 0x61, 0x01]);
-    cmd([gs, 0x21, 0x11]);
-    text("D Brownies");
-    nl();
-    cmd([gs, 0x21, 0x00]);
-    text("--------------------------------");
-    nl();
+    // Dashed divider (lighter look, matches printer output)
+    void dash() {
+      text("- - - - - - - - - - - - - - - -");
+      nl();
+    }
 
+    void solidDash() {
+      text("--------------------------------");
+      nl();
+    }
+
+    // Center a string within [width] chars
+    String center(String s) {
+      if (s.length >= width) return s;
+      final pad = (width - s.length) ~/ 2;
+      return (' ' * pad) + s;
+    }
+
+    // Word-wrap a string to [width], returns list of lines
+    List<String> wrap(String s, int w) {
+      final words = s.split(' ');
+      final lines = <String>[];
+      var line = '';
+      for (final word in words) {
+        if (line.isEmpty) {
+          line = word;
+        } else if ((line + ' ' + word).length <= w) {
+          line += ' ' + word;
+        } else {
+          lines.add(line);
+          line = word;
+        }
+      }
+      if (line.isNotEmpty) lines.add(line);
+      return lines;
+    }
+
+    // ── Initialize ─────────────────────────────────────────────────────────
+    cmd([esc, 0x40]);
+
+    // ── Header ─────────────────────────────────────────────────────────────
+    nl();
+    cmd([esc, 0x61, 0x01]); // center
+    cmd([gs, 0x21, 0x11]); // double width + height
+    text("D BROWNIES");
+    nl();
+    cmd([gs, 0x21, 0x00]); // normal size
+    text("~ handcrafted with love ~");
+    nl();
+    text("Poonamallee, Chennai - 600056");
+    nl();
+    text("+91 63811 98050");
+    nl();
+    dash();
+
+    // ── Order info ──────────────────────────────────────────────────────────
     final now = DateTime.now();
     final dateStr =
-        "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}  "
+        "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}"
+        "   "
         "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
     text(dateStr);
     nl();
@@ -746,51 +814,68 @@ class _OrdersScreenState extends State<OrdersScreen>
     nl();
     text("Customer: ${order["customer_name"]}");
     nl();
-    text("--------------------------------");
-    nl();
+    dash();
 
-    cmd([esc, 0x61, 0x00]);
-    cmd([esc, 0x45, 0x01]);
-    text(_padLine("Item", "Qty  Price", 32));
+    // ── Items header ────────────────────────────────────────────────────────
+    cmd([esc, 0x61, 0x00]); // left
+    cmd([esc, 0x45, 0x01]); // bold on
+    text("  ITEM");
     nl();
-    cmd([esc, 0x45, 0x00]);
-    text("--------------------------------");
-    nl();
+    cmd([esc, 0x45, 0x00]); // bold off
+    solidDash();
 
+    // ── Items ───────────────────────────────────────────────────────────────
     for (var item in items) {
       final qty = item["quantity"] as int;
       final price = (item["price"] as num).toDouble();
-      final lineTotal = (qty * price).toStringAsFixed(2);
-      final right = "x$qty  Rs.$lineTotal";
+      final lineTotal = (qty * price).truncate();
       final name = item["item_name"] as String;
-      text(_padLine(name, right, 32));
+      final qtyPrice = "x$qty   Rs.$lineTotal";
+
+      // Name on its own line — wrap if too long
+      final nameLines = wrap("  $name", width);
+      for (final line in nameLines) {
+        text(line);
+        nl();
+      }
+
+      // Qty + price right-aligned on the next line
+      final rightPad = width - qtyPrice.length;
+      text((' ' * rightPad) + qtyPrice);
       nl();
     }
 
-    text("--------------------------------");
-    nl();
-    cmd([esc, 0x61, 0x02]);
-    cmd([esc, 0x45, 0x01]);
-    cmd([gs, 0x21, 0x01]);
-    text("Total: Rs.${order["total_amount"]}");
+    // ── Total ───────────────────────────────────────────────────────────────
+    solidDash();
+    cmd([esc, 0x61, 0x02]); // right align
+    cmd([esc, 0x45, 0x01]); // bold
+    cmd([gs, 0x21, 0x01]); // double height
+    final totalAmt = (order["total_amount"] as num).truncate();
+    text("TOTAL  Rs.$totalAmt");
     nl();
     cmd([gs, 0x21, 0x00]);
     cmd([esc, 0x45, 0x00]);
-    cmd([esc, 0x61, 0x01]);
-    text("--------------------------------");
-    nl();
-    text("Thank you! Visit again :)");
+
+    // ── Closing line ────────────────────────────────────────────────────────
+    cmd([esc, 0x61, 0x01]); // center
+    solidDash();
+
+    // Pick a random closing line and wrap it centered
+    final random = DateTime.now().millisecondsSinceEpoch % _closingLines.length;
+    final closing = _closingLines[random];
+    final closingWrapped = wrap(closing, width - 2);
+    for (final line in closingWrapped) {
+      text(center(line));
+      nl();
+    }
+
+    dash();
     nl(4);
+
+    // ── Cut ─────────────────────────────────────────────────────────────────
     cmd([gs, 0x56, 0x41, 0x03]);
 
     return bytes;
-  }
-
-  String _padLine(String left, String right, int width) {
-    final space = width - left.length - right.length;
-    if (space <= 0)
-      return "${left.substring(0, width - right.length - 1)} $right";
-    return left + (' ' * space) + right;
   }
 
   // ── Summary header ───────────────────────────────────────────────────────
