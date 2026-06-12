@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -645,7 +646,17 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
 
     try {
-      // Attempt connection — returns true/false, no silent failures
+      // Always disconnect first — clears any lingering connection from
+      // a previous print so the printer doesn't reject the new attempt
+      final bool alreadyConnected =
+          await PrintBluetoothThermal.connectionStatus;
+      if (alreadyConnected) {
+        await Future(() => PrintBluetoothThermal.disconnect);
+        // Small pause to let the printer fully release the connection
+        await Future.delayed(const Duration(milliseconds: 800));
+      }
+
+      // Attempt fresh connection — returns true/false, no silent failures
       final bool connected = await PrintBluetoothThermal.connect(
         macPrinterAddress: address,
       );
@@ -661,7 +672,6 @@ class _OrdersScreenState extends State<OrdersScreen>
               duration: Duration(seconds: 2),
             ),
           );
-          // Clear saved address and show picker to retry or pick another
           await _clearSavedPrinter();
           await Future.delayed(const Duration(seconds: 2));
           if (!mounted) return;
@@ -673,7 +683,7 @@ class _OrdersScreenState extends State<OrdersScreen>
         return;
       }
 
-      // Connected — verify once more then send bytes
+      // Verify connection is live before sending bytes
       final bool isConnected = await PrintBluetoothThermal.connectionStatus;
       if (!isConnected) {
         throw Exception("Connection dropped before printing.");
@@ -681,6 +691,9 @@ class _OrdersScreenState extends State<OrdersScreen>
 
       final receipt = _buildReceipt(order, items);
       final bool printed = await PrintBluetoothThermal.writeBytes(receipt);
+
+      // Disconnect cleanly after printing so next print starts fresh
+      await Future(() => PrintBluetoothThermal.disconnect);
 
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -696,6 +709,8 @@ class _OrdersScreenState extends State<OrdersScreen>
         }
       }
     } catch (e) {
+      // Disconnect on error too — ensures clean state for next attempt
+      await Future(() => PrintBluetoothThermal.disconnect);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         await _clearSavedPrinter();
@@ -715,23 +730,58 @@ class _OrdersScreenState extends State<OrdersScreen>
     }
   }
 
-  // 15 closing lines — one picked at random each receipt
+  // 50 closing lines — one picked at random each receipt
   static const _closingLines = [
-    "Hope this little treat brings a little extra joy to your day.",
-    "Whatever today has been like, you made it this far. Enjoy the dessert.",
-    "You deserve moments like this.",
-    "Take a pause, enjoy the sweetness, and be kind to yourself.",
-    "Thanks for letting us be a small part of your day.",
-    "Here's to good company, good conversations, and good desserts.",
-    "Hope you find a reason to smile before the last bite.",
-    "Life moves fast. Desserts are a good excuse to slow down.",
-    "Wishing you a day that's a little sweeter than before.",
-    "Some days call for a treat. Some days deserve one.",
+    "Hope this treat was exactly what you needed today.",
     "You looked at the menu and chose happiness.",
-    "Good news: dessert was the right answer.",
-    "This receipt is proof that at least one good decision was made today.",
+    "Thanks for spending a little part of your day with us.",
     "This receipt is evidence of excellent taste.",
-    "If anyone asks, this was absolutely necessary.",
+    "Hope every bite was worth it.",
+    "Some days deserve dessert. Some days require it.",
+    "Wishing you a day filled with little joys.",
+    "The world feels better after a good dessert.",
+    "Good news: dessert was the right answer.",
+    "Hope this treat leaves you smiling.",
+    "Thank you for supporting a small dream.",
+    "May your dessert be the best part of your day.",
+    "Life moves fast. Desserts are a good excuse to slow down.",
+    "We're glad you stopped by.",
+    "A little sweetness can go a long way.",
+    "If anyone asks, this purchase was absolutely necessary.",
+    "Hope today treats you kindly.",
+    "Made with care, enjoyed with luck.",
+    "The hardest part starts now: making it last.",
+    "Here's to good desserts and even better days.",
+    "May your next coffee be perfect.",
+    "You deserve nice things. This is one of them.",
+    "Thanks for choosing us for your sweet craving.",
+    "Hope something wonderful happens to you today.",
+    "Chocolate has a remarkable success rate.",
+    "Take a moment and enjoy the sweetness.",
+    "The calories have agreed not to discuss this.",
+    "Hope this little treat brightens your day.",
+    "You brought the smile. We just helped.",
+    "Every great day deserves a great dessert.",
+    "Your future self approves of this decision.",
+    "May your day be as delightful as your order.",
+    "A good dessert is never a bad idea.",
+    "Hope you leave happier than you arrived.",
+    "Dessert first. Worries later.",
+    "Thank you for letting us be part of your day.",
+    "May today bring more reasons to smile.",
+    "You have excellent taste. The receipt proves it.",
+    "Somewhere, a dessert chef is proud of you.",
+    "Here's a little sweetness for the road ahead.",
+    "Hope your day gets even better from here.",
+    "Built with love, butter, and questionable restraint.",
+    "Good desserts create good memories.",
+    "You earned this treat.",
+    "May the rest of your day be just as satisfying.",
+    "A tiny celebration, printed and served.",
+    "The dessert is temporary. The happiness can stay.",
+    "We're rooting for you, one dessert at a time.",
+    "Hope you find a reason to smile before the last bite.",
+    "Until next craving, take care.",
   ];
 
   List<int> _buildReceipt(
@@ -861,8 +911,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     solidDash();
 
     // Pick a random closing line and wrap it centered
-    final random = DateTime.now().millisecondsSinceEpoch % _closingLines.length;
-    final closing = _closingLines[random];
+    final closing = _closingLines[Random().nextInt(_closingLines.length)];
     final closingWrapped = wrap(closing, width - 2);
     for (final line in closingWrapped) {
       text(center(line));

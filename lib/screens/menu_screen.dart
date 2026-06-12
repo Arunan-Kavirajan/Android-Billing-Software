@@ -135,6 +135,7 @@ class _MenuScreenState extends State<MenuScreen>
                   if (item["category"] == oldCategory) {
                     await DatabaseHelper.instance.updateMenuItem(
                       oldName: item["name"],
+                      oldCategory: oldCategory,
                       name: item["name"],
                       price: item["price"],
                       category: newCategory,
@@ -190,6 +191,7 @@ class _MenuScreenState extends State<MenuScreen>
                   if (item["category"] == category) {
                     await DatabaseHelper.instance.updateMenuItem(
                       oldName: item["name"],
+                      oldCategory: category,
                       name: item["name"],
                       price: item["price"],
                       category: AppData.uncategorized,
@@ -317,8 +319,6 @@ class _MenuScreenState extends State<MenuScreen>
                       return;
                     }
 
-                    // Exclude the item being edited by its original name+category,
-                    // not by reference — map references differ after DB reload.
                     final originalName = item["name"] as String;
                     final originalCategory = item["category"] as String;
 
@@ -338,6 +338,7 @@ class _MenuScreenState extends State<MenuScreen>
 
                     await DatabaseHelper.instance.updateMenuItem(
                       oldName: item["name"],
+                      oldCategory: item["category"],
                       name: newName,
                       price: newPrice,
                       category: category,
@@ -384,6 +385,7 @@ class _MenuScreenState extends State<MenuScreen>
               onPressed: () async {
                 await DatabaseHelper.instance.deleteMenuItem(
                   AppData.menuItems[index]["name"],
+                  AppData.menuItems[index]["category"],
                 );
                 Navigator.pop(context);
                 await loadData();

@@ -146,6 +146,7 @@ class DatabaseHelper {
 
   Future<int> updateMenuItem({
     required String oldName,
+    required String oldCategory,
     required String name,
     required double price,
     required String category,
@@ -155,15 +156,19 @@ class DatabaseHelper {
     return db.update(
       'menu_items',
       {'name': name, 'price': price, 'category': category},
-      where: 'name = ?',
-      whereArgs: [oldName],
+      where: 'name = ? AND category = ?',
+      whereArgs: [oldName, oldCategory],
     );
   }
 
-  Future<int> deleteMenuItem(String name) async {
+  Future<int> deleteMenuItem(String name, String category) async {
     final db = await database;
 
-    return db.delete('menu_items', where: 'name = ?', whereArgs: [name]);
+    return db.delete(
+      'menu_items',
+      where: 'name = ? AND category = ?',
+      whereArgs: [name, category],
+    );
   }
 
   // =========================
