@@ -1,4 +1,4 @@
-package com.example.d_brownie_billing_app
+package com.dbrownies.billing
 
 import io.flutter.embedding.android.FlutterActivity
 

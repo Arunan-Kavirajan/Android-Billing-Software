@@ -331,10 +331,12 @@ class DatabaseHelper {
 
     final result = await db.rawQuery('''
     SELECT
-      item_name,
-      SUM(quantity) as total_sold
-    FROM order_items
-    GROUP BY item_name
+      oi.item_name,
+      SUM(oi.quantity) as total_sold
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'Served'
+    GROUP BY oi.item_name
     ORDER BY total_sold DESC
     LIMIT 1
   ''');
@@ -351,10 +353,12 @@ class DatabaseHelper {
 
     return await db.rawQuery('''
     SELECT
-      item_name,
-      SUM(quantity) as total_sold
-    FROM order_items
-    GROUP BY item_name
+      oi.item_name,
+      SUM(oi.quantity) as total_sold
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'Served'
+    GROUP BY oi.item_name
     ORDER BY total_sold DESC
     LIMIT 5
   ''');
@@ -651,10 +655,12 @@ class DatabaseHelper {
 
     return await db.rawQuery('''
     SELECT
-      item_name,
-      SUM(quantity) as total_sold
-    FROM order_items
-    GROUP BY item_name
+      oi.item_name,
+      SUM(oi.quantity) as total_sold
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'Served'
+    GROUP BY oi.item_name
     ORDER BY total_sold ASC
     LIMIT 5
   ''');

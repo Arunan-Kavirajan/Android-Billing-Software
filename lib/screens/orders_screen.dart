@@ -476,6 +476,25 @@ class _OrdersScreenState extends State<OrdersScreen>
   Future<void> _triggerPrint(Map<String, dynamic> order) async {
     final items = await DatabaseHelper.instance.getOrderItems(order["id"]);
     if (!mounted) return;
+
+    // Let print_bluetooth_thermal request permissions itself
+    // It handles Android 12+ BLUETOOTH_CONNECT/SCAN natively
+    final bool permissionGranted = await PrintBluetoothThermal.bluetoothEnabled;
+
+    if (!permissionGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Please enable Bluetooth and grant Nearby Devices permission, then try again.",
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
     await _selectPrinterAndPrint(order, items);
   }
 
