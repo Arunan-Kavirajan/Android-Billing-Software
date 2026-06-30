@@ -1,6 +1,6 @@
 # Android Billing Software
 
-A Flutter based billing and order management app built for small food stalls and similar retail setups. Built by [Arunan Kavirajan](https://github.com/Arunan-Kavirajan). Handles the full order lifecycle, from placing and editing orders to serving, printing receipts, and viewing business reports.
+A Flutter based billing and order management app built for small food stalls and similar retail setups. Handles the full order lifecycle, from placing and editing orders to serving, printing receipts, and viewing business reports.
 
 ---
 
