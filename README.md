@@ -1,12 +1,13 @@
-# D Brownies Billing App
+# Android Billing Software
 
-A Flutter-based billing and order management app built for D Brownies food stall. Handles the full order lifecycle — from placing and editing orders to serving, printing receipts, and viewing business reports.
+A Flutter based billing and order management app built for small food stalls and similar retail setups. Handles the full order lifecycle, from placing and editing orders to serving, printing receipts, and viewing business reports.
 
 ---
 
 ## Features
 
 ### Orders
+
 - Place new orders with customer name and itemised menu selection
 - Edit pending orders before they're served
 - Mark orders as Served or Cancelled with confirmation dialogs
@@ -17,28 +18,31 @@ A Flutter-based billing and order management app built for D Brownies food stall
 - Summary header showing live count of Pending, Served, and Cancelled orders
 
 ### Menu Management
-- Organised into two tabs — Categories and Items
+
+- Organised into two tabs, Categories and Items
 - Add, edit, and delete categories
 - Add, edit, and delete menu items with name, price, and category
 - Items grouped by category in the Items tab
 - Deleting a category moves its items to Uncategorized automatically
 
 ### Reports
+
 - Filter by Today, Week, Month, or All Time
 - Revenue, order count, average order value, and cancellation count
-- Top 5 best-selling items
-- Category leaders (top item per category)
-- Business patterns — peak day, slowest day, peak hour
-- Weekday demand pattern (favourite item per day of the week)
+- Top 5 best selling items
+- Category leaders, the top item per category
+- Business patterns, including peak day, slowest day, and peak hour
+- Weekday demand pattern, showing the favourite item per day of the week
 - Worst performing items
-- Danger zone — reset all business data with double confirmation
+- Danger zone, with the option to reset all business data behind double confirmation
 
 ### Bluetooth Printing
+
 - Connects to any ESC/POS 58mm thermal Bluetooth printer
-- Printer is saved after first selection — no need to re-select every time
-- Receipt includes shop name, date/time, order number, customer name, itemised list, and total
+- Printer is saved after first selection, so there is no need to re-select every time
+- Receipt includes shop name, date and time, order number, customer name, itemised list, and total
 - "Change Printer" option available from the success snackbar
-- If printing fails, saved printer is cleared and picker reopens next time
+- If printing fails, the saved printer is cleared and the picker reopens next time
 
 ---
 
@@ -59,7 +63,7 @@ lib/
 ├── main.dart                  # App entry point, theme, preloads menu data
 ├── data/
 │   ├── app_data.dart          # In-memory store for categories and menu items
-│   └── database_helper.dart   # SQLite helper — all DB operations
+│   └── database_helper.dart   # SQLite helper, all DB operations
 └── screens/
     ├── orders_screen.dart     # Orders list, tabs, print, serve/cancel flow
     ├── billing_screen.dart    # New order and edit order screen
@@ -72,6 +76,7 @@ lib/
 ## Getting Started
 
 ### Prerequisites
+
 - Flutter SDK
 - Android device or emulator (Android 6.0+)
 - A 58mm Bluetooth thermal printer (ESC/POS compatible)
@@ -80,15 +85,13 @@ lib/
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/Arunan-Kavirajan/D-Brownies-Billing-App.git
-   cd D-Brownies-Billing-App
+   git clone https://github.com/Arunan-Kavirajan/Android-Billing-Software.git
+   cd Android-Billing-Software
    ```
-
 2. Install dependencies:
    ```bash
    flutter pub get
    ```
-
 3. Run the app:
    ```bash
    flutter run
@@ -118,6 +121,8 @@ The following permissions are required in `AndroidManifest.xml` for Bluetooth pr
 
 ---
 
-## Built for
+## Author
 
-**D Brownies** — a local food stall billing solution.
+**Arunan Kavirajan** is an IT undergraduate at SRM Institute of Science and Technology (SRMIST), Chennai, building software with AI integration.
+
+[GitHub](https://github.com/Arunan-Kavirajan) · [LinkedIn](https://www.linkedin.com/in/arunan-kavirajan)
