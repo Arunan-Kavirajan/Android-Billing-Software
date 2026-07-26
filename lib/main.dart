@@ -41,7 +41,7 @@ class BillingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'D Brownie Billing',
+      title: 'Sweet Shop Billing',
       theme: ThemeData(
         useMaterial3: true,
 

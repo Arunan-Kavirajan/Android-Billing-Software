@@ -16,7 +16,7 @@
         android:maxSdkVersion="30" />
 
     <application
-        android:label="D Brownies Billing"
+        android:label="Sweet Shop Billing"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -860,14 +860,14 @@ class _OrdersScreenState extends State<OrdersScreen>
     nl();
     cmd([esc, 0x61, 0x01]); // center
     cmd([gs, 0x21, 0x11]); // double width + height
-    text("D BROWNIES");
+    text("My Sweet Shop");
     nl();
     cmd([gs, 0x21, 0x00]); // normal size
-    text("~ handcrafted with love ~");
+    text("~ made with love ~");
     nl();
-    text("Poonamallee, Chennai - 600056");
+    text("123 Main Street, Anytown");
     nl();
-    text("+91 63811 98050");
+    text("+91 00000 00000");
     nl();
     dash();
 
