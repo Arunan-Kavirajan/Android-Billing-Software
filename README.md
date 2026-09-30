@@ -118,11 +118,3 @@ The following permissions are required in `AndroidManifest.xml` for Bluetooth pr
 <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 ```
-
----
-
-## Author
-
-**Arunan Kavirajan** is an IT undergraduate at SRM Institute of Science and Technology (SRMIST), Chennai, building software with AI integration.
-
-[GitHub](https://github.com/Arunan-Kavirajan) · [LinkedIn](https://www.linkedin.com/in/arunan-kavirajan)
