@@ -148,10 +148,3 @@ Bluetooth printing requires these permissions in `AndroidManifest.xml`:
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 
-<br />
-
-## Author
-
-**Arunan Kavirajan** is an IT undergraduate at SRM Institute of Science and Technology (SRMIST), Chennai, building software with AI integration.
-
-[GitHub](https://github.com/Arunan-Kavirajan) · [LinkedIn](https://www.linkedin.com/in/arunan-kavirajan)
