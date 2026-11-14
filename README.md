@@ -1,6 +1,6 @@
 <div align="center">
 
-# D Brownies Billing App
+# Billing App
 
 **Billing and order management for small food stalls.**
 
@@ -24,7 +24,7 @@
 
 ## Introduction
 
-D Brownies Billing App replaces pen-and-paper order books for small food stalls and similar retail setups. Take an order, edit it while it is pending, mark it served or cancelled, print a receipt, and review how the business is doing, all offline on a single Android device.
+Billing App replaces pen-and-paper order books for small food stalls and similar retail setups. Take an order, edit it while it is pending, mark it served or cancelled, print a receipt, and review how the business is doing, all offline on a single Android device.
 
 <br />
 
